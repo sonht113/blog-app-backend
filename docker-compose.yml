@@ -1,0 +1,76 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: nestjs_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+
+  # NestJS API (Development Mode)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder # Use builder stage for development
+    container_name: nestjs_dev_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret}
+    ports:
+      - '${API_PORT:-3000}:3000'
+      - '9229:9229' # Debug port
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./test:/app/test
+      - ./.env:/app/.env:ro
+      # Preserve node_modules from container
+      - node_modules_cache:/app/node_modules
+      # Mount uploads directory
+      - ./uploads:/app/uploads
+    # Use npm scripts which should work
+    command: >
+      sh -c "
+        echo 'Installing dependencies...' &&
+        npm ci &&
+        echo 'Generating Prisma client...' &&
+        npx prisma generate --schema=prisma/schema.prisma &&
+        echo 'Applying database migrations...' &&
+        npx prisma migrate deploy --schema=prisma/schema.prisma || true &&
+        echo 'Starting development server...' &&
+        npm run start:dev
+      "
+    networks:
+      - dev-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  node_modules_cache:
+    driver: local
+
+networks:
+  dev-network:
+    driver: bridge
+    name: nestjs_dev_network

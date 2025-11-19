@@ -1,0 +1,36 @@
+build chay thu len duoc
+thi toi uu pha build dung multipe step build
+de giam size
+
+dung image size nho hon de lam base chay nhu alpine,....
+
+tim hiem ve entrypoint vs cmd
+
+nap env vao conatiner luc runtime
+
+
+tim hieu chay tung container
+
+
+====================================
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${1:-localhost}"
+port="${2:-5432}"
+user="${3:-test_user}"
+max_retries="${4:-30}"
+sleep_seconds="${5:-1}"
+
+i=0
+until pg_isready -h "$host" -p "$port" -U "$user" >/dev/null 2>&1; do
+  i=$((i+1))
+  echo "Waiting for Postgres at $host:$port as $user... ($i/$max_retries)" >&2
+  if [ "$i" -ge "$max_retries" ]; then
+    echo "Postgres did not become ready in time" >&2
+    exit 1
+  fi
+  sleep "$sleep_seconds"
+done
+
+echo "Postgres is ready"
