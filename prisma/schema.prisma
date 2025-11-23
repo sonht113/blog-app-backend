@@ -27,7 +27,7 @@ model User {
   comments  Comment[]
 }
 
-enum Role {npx
+enum Role {
   USER
   ADMIN
 }

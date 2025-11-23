@@ -32,7 +32,12 @@ async function bootstrap() {
 
   app.useStaticAssets(uploadsPath, { prefix: '/uploads' });
 
-  app.enableCors();
+  app.enableCors({
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
+    credentials: true,
+  });
 
   // 🔥 Cấu hình Swagger
   const config = new DocumentBuilder()
@@ -54,4 +59,4 @@ async function bootstrap() {
     `📘 Swagger Docs: http://localhost:${process.env.PORT || 3000}/api/docs`,
   );
 }
-bootstrap();
+void bootstrap();
